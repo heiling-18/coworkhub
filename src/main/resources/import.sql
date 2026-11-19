@@ -1,0 +1,3 @@
+-- Datos de prueba de CoWorkHub (se llena en la FASE 03-04, cuando existan las entidades).
+-- Reglas: una sentencia por linea terminada en ";", padres antes que hijos
+-- (sedes -> salas -> ...), contrasenas ya codificadas con BCrypt.

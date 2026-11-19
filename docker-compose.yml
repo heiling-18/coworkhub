@@ -1,0 +1,27 @@
+# Base de datos MySQL 8.0 para CoWorkHub.
+# Levantar:  docker compose up -d
+# Ver logs:  docker compose logs -f mysql   (esperar "ready for connections")
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: coworkhub-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: coworkhub
+      MYSQL_USER: coworkhub
+      MYSQL_PASSWORD: coworkhub
+      MYSQL_ROOT_PASSWORD: root
+      TZ: UTC
+    ports:
+      - "3307:3306"   # 3307 en tu PC porque el 3306 ya lo usa un MySQL local
+    volumes:
+      - coworkhub-datos:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ucoworkhub", "-pcoworkhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  coworkhub-datos:
+    name: coworkhub-datos
