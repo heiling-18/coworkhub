@@ -4,9 +4,9 @@ import com.coworkhub.business.exception.NoEncontradoException;
 import com.coworkhub.business.exception.ReglaNegocioException;
 import com.coworkhub.business.mapper.Mapeador;
 import com.coworkhub.business.service.SedeServicio;
-import com.coworkhub.persistence.entity.Sede;
-import com.coworkhub.persistence.repository.SalaRepository;
-import com.coworkhub.persistence.repository.SedeRepository;
+import com.coworkhub.persistence.entity.Location;
+import com.coworkhub.persistence.repository.LocationRepository;
+import com.coworkhub.persistence.repository.RoomRepository;
 import com.coworkhub.presentation.dto.request.SedeSolicitud;
 import com.coworkhub.presentation.dto.response.SedeRespuesta;
 import org.springframework.stereotype.Service;
@@ -18,18 +18,18 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class SedeServicioImpl implements SedeServicio {
 
-    private final SedeRepository sedeRepository;
-    private final SalaRepository salaRepository;
+    private final LocationRepository locationRepository;
+    private final RoomRepository roomRepository;
 
-    
-    public SedeServicioImpl(SedeRepository sedeRepository, SalaRepository salaRepository) {
-        this.sedeRepository = sedeRepository;
-        this.salaRepository = salaRepository;
+    // Inyección por constructor: Spring pasa los repositorios solo.
+    public SedeServicioImpl(LocationRepository locationRepository, RoomRepository roomRepository) {
+        this.locationRepository = locationRepository;
+        this.roomRepository = roomRepository;
     }
 
     @Override
     public List<SedeRespuesta> listar() {
-        return sedeRepository.findAllByOrderByIdAsc().stream()
+        return locationRepository.findAllByOrderByIdAsc().stream()
                 .map(Mapeador::aSede)
                 .toList();
     }
@@ -42,15 +42,15 @@ public class SedeServicioImpl implements SedeServicio {
     @Override
     @Transactional
     public SedeRespuesta crear(SedeSolicitud solicitud) {
-        Sede sede = new Sede();
+        Location sede = new Location();
         copiar(solicitud, sede);
-        return Mapeador.aSede(sedeRepository.save(sede));
+        return Mapeador.aSede(locationRepository.save(sede));
     }
 
     @Override
     @Transactional
     public SedeRespuesta actualizar(Long id, SedeSolicitud solicitud) {
-        Sede sede = buscar(id);
+        Location sede = buscar(id);
         copiar(solicitud, sede);
         return Mapeador.aSede(sede);   // no hace falta save(): JPA guarda los cambios al terminar la transacción
     }
@@ -58,24 +58,24 @@ public class SedeServicioImpl implements SedeServicio {
     @Override
     @Transactional
     public void eliminar(Long id) {
-        Sede sede = buscar(id);
+        Location sede = buscar(id);
         // RN-12: no se borra una sede que tiene salas
-        if (salaRepository.existsBySedeId(id)) {
+        if (roomRepository.existsByLocationId(id)) {
             throw new ReglaNegocioException("RN-12", "No se puede eliminar la sede porque tiene salas");
         }
-        sedeRepository.delete(sede);
+        locationRepository.delete(sede);
     }
 
-    private void copiar(SedeSolicitud s, Sede sede) {
-        sede.setNombre(s.nombre());
-        sede.setCiudad(s.ciudad());
-        sede.setDireccion(s.direccion());
-        sede.setHoraApertura(s.horaApertura());
-        sede.setHoraCierre(s.horaCierre());
+    private void copiar(SedeSolicitud s, Location sede) {
+        sede.setName(s.nombre());
+        sede.setCity(s.ciudad());
+        sede.setAddress(s.direccion());
+        sede.setOpeningTime(s.horaApertura());
+        sede.setClosingTime(s.horaCierre());
     }
 
-    private Sede buscar(Long id) {
-        return sedeRepository.findById(id)
+    private Location buscar(Long id) {
+        return locationRepository.findById(id)
                 .orElseThrow(() -> new NoEncontradoException("No existe la sede " + id));
     }
 }
