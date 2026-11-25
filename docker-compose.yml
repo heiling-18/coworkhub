@@ -6,6 +6,7 @@ services:
     image: mysql:8.0
     container_name: coworkhub-mysql
     restart: unless-stopped
+    command: --default-time-zone=-05:00   # hora de Colombia para NOW()/CURDATE() de import.sql
     environment:
       MYSQL_DATABASE: coworkhub
       MYSQL_USER: coworkhub
