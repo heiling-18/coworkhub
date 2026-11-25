@@ -1,5 +1,7 @@
 package com.coworkhub.presentation.advice;
 
+import com.coworkhub.business.exception.AccesoDenegadoException;
+import com.coworkhub.business.exception.CredencialesInvalidasException;
 import com.coworkhub.business.exception.DatosInvalidosException;
 import com.coworkhub.business.exception.NoEncontradoException;
 import com.coworkhub.business.exception.ReglaNegocioException;
@@ -11,6 +13,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -81,6 +84,20 @@ public class ManejadorErrores {
                 ? "Falta el parámetro obligatorio '" + m.getParameterName() + "'"
                 : "La solicitud está mal formada (revise el JSON, los tipos y el formato de las fechas)";
         return responder(HttpStatus.BAD_REQUEST, mensaje, "VALIDACION");
+    }
+
+    /** 401: usuario o contraseña incorrectos en el login. */
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ErrorRespuesta> credenciales(CredencialesInvalidasException e) {
+        return responder(HttpStatus.UNAUTHORIZED, e.getMessage(), "NO_AUTENTICADO");
+    }
+
+    /** 403: no tiene el rol (@PreAuthorize) o no es dueño del recurso (RN-13). */
+    @ExceptionHandler({AccesoDenegadoException.class, AccessDeniedException.class})
+    public ResponseEntity<ErrorRespuesta> accesoDenegado(RuntimeException e) {
+        String mensaje = e instanceof AccesoDenegadoException ? e.getMessage()
+                : "No tiene permiso para realizar esta acción";
+        return responder(HttpStatus.FORBIDDEN, mensaje, "ACCESO_DENEGADO");
     }
 
     /** 409: respaldo de RN-11 si la base de datos rechaza un duplicado. */

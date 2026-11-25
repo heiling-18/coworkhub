@@ -1,5 +1,7 @@
 package com.coworkhub.presentation.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -28,6 +30,7 @@ public class MiembroControlador {
     /** GET /api/miembros?nombre=&estado= */
     @GetMapping
     @Operation(summary = "Listar miembros (filtros ?nombre= y ?estado=)")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
     public List<MiembroRespuesta> listar(@RequestParam(required = false) String nombre,
                                          @RequestParam(required = false) MemberStatus estado) {
         return servicio.listar(nombre, estado);
@@ -43,30 +46,35 @@ public class MiembroControlador {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Registrar miembro y su cuenta de usuario")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
     public MiembroRespuesta registrar(@Valid @RequestBody MiembroRegistroSolicitud solicitud) {
         return servicio.registrar(solicitud);
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Actualizar nombre, email y plan")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
     public MiembroRespuesta actualizar(@PathVariable Long id, @Valid @RequestBody MiembroActualizacionSolicitud solicitud) {
         return servicio.actualizar(id, solicitud);
     }
 
     @PatchMapping("/{id}/suspender")
     @Operation(summary = "Suspender miembro (ya no podrá reservar, RN-05)")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
     public MiembroRespuesta suspender(@PathVariable Long id) {
         return servicio.cambiarEstado(id, MemberStatus.SUSPENDED);
     }
 
     @PatchMapping("/{id}/activar")
     @Operation(summary = "Reactivar miembro")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
     public MiembroRespuesta activar(@PathVariable Long id) {
         return servicio.cambiarEstado(id, MemberStatus.ACTIVE);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Eliminar miembro (409 si tiene reservas, RN-12)")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
     public void eliminar(@PathVariable Long id) {
         servicio.eliminar(id);
     }

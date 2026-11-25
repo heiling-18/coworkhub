@@ -15,6 +15,7 @@ import com.coworkhub.presentation.dto.request.MiembroActualizacionSolicitud;
 import com.coworkhub.presentation.dto.request.MiembroRegistroSolicitud;
 import com.coworkhub.presentation.dto.response.ConsumoRespuesta;
 import com.coworkhub.presentation.dto.response.MiembroRespuesta;
+import com.coworkhub.security.UsuarioActual;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ public class MiembroServicioImpl implements MiembroServicio {
     private final UserAccountRepository accountRepository;
     private final BookingRepository bookingRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UsuarioActual usuarioActual;
 
     @Override
     public List<MiembroRespuesta> listar(String nombre, MemberStatus estado) {
@@ -45,6 +47,7 @@ public class MiembroServicioImpl implements MiembroServicio {
 
     @Override
     public MiembroRespuesta obtener(Long id) {
+        usuarioActual.verificarDueno(id);   // RN-13: un MEMBER solo ve su propio perfil
         return Mapeador.aMiembro(buscar(id));
     }
 
@@ -113,6 +116,7 @@ public class MiembroServicioImpl implements MiembroServicio {
     /** RF-10: horas incluidas, usadas, restantes y excedentes del mes. */
     @Override
     public ConsumoRespuesta consumo(Long id, YearMonth mes) {
+        usuarioActual.verificarDueno(id);   // RN-13
         Member miembro = buscar(id);
         long minutosUsados = bookingRepository.monthlyUsage(id, mes.atDay(1).atStartOfDay(),
                         mes.plusMonths(1).atDay(1).atStartOfDay(),

@@ -1,5 +1,7 @@
 package com.coworkhub.presentation.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -45,16 +47,19 @@ private final SedeServicio sedeServicio;
     @PostMapping 
     @ResponseStatus (HttpStatus.CREATED)
     @Operation(summary = "Crear (solo ADMIN)")
+    @PreAuthorize("hasRole('ADMIN')")
     public SedeRespuesta crear(@Valid @RequestBody SedeSolicitud solicitud) {
         return sedeServicio.crear(solicitud);
     }
     @PutMapping ("/{id}")
     @Operation(summary = "Actualizar (solo ADMIN)")
+    @PreAuthorize("hasRole('ADMIN')")
     public SedeRespuesta actualizar(@PathVariable Long id, @Valid @RequestBody SedeSolicitud solicitud) {
         return sedeServicio.actualizar(id, solicitud);
     }
      @DeleteMapping("/{id}")
     @Operation(summary = "Eliminar (solo ADMIN). 409 si está en uso (RN-12)")
+    @PreAuthorize("hasRole('ADMIN')")
     public void eliminar(@PathVariable Long id) {  
         sedeServicio.eliminar(id);
     }

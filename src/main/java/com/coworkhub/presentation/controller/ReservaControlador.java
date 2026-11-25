@@ -1,5 +1,7 @@
 package com.coworkhub.presentation.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -65,6 +67,7 @@ public class ReservaControlador {
 
     @PostMapping("/{id}/confirmar")
     @Operation(summary = "Confirmar: PENDING -> CONFIRMED (RN-09)")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
     public ReservaRespuesta confirmar(@PathVariable Long id) {
         return servicio.confirmar(id);
     }
@@ -77,6 +80,7 @@ public class ReservaControlador {
 
     @PostMapping("/{id}/completar")
     @Operation(summary = "Completar: CONFIRMED -> COMPLETED (RN-09)")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
     public ReservaRespuesta completar(@PathVariable Long id) {
         return servicio.completar(id);
     }

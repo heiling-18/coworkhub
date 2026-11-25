@@ -1,5 +1,6 @@
 package com.coworkhub.business.service.impl;
 
+import com.coworkhub.business.exception.AccesoDenegadoException;
 import com.coworkhub.business.exception.DatosInvalidosException;
 import com.coworkhub.business.exception.NoEncontradoException;
 import com.coworkhub.business.exception.ReglaNegocioException;
@@ -16,6 +17,8 @@ import com.coworkhub.presentation.dto.request.ReservaSolicitud;
 import com.coworkhub.presentation.dto.request.ServicioSolicitud;
 import com.coworkhub.presentation.dto.response.CancelacionRespuesta;
 import com.coworkhub.presentation.dto.response.ReservaRespuesta;
+import com.coworkhub.security.UsuarioActual;
+import com.coworkhub.security.UsuarioAutenticado;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -39,17 +42,20 @@ public class ReservaServicioImpl implements ReservaServicio {
     private final MemberRepository memberRepository;
     private final AdditionalServiceRepository serviceRepository;
     private final CalculadoraCostos calculadora;
+    private final UsuarioActual usuarioActual;
     private final Clock reloj;
 
     // Constructor escrito a mano para usar @Qualifier en el Clock (módulo 02)
     public ReservaServicioImpl(BookingRepository bookingRepository, RoomRepository roomRepository,
                                MemberRepository memberRepository, AdditionalServiceRepository serviceRepository,
-                               CalculadoraCostos calculadora, @Qualifier("relojNegocio") Clock reloj) {
+                               CalculadoraCostos calculadora, UsuarioActual usuarioActual,
+                               @Qualifier("relojNegocio") Clock reloj) {
         this.bookingRepository = bookingRepository;
         this.roomRepository = roomRepository;
         this.memberRepository = memberRepository;
         this.serviceRepository = serviceRepository;
         this.calculadora = calculadora;
+        this.usuarioActual = usuarioActual;
         this.reloj = reloj;
     }
 
@@ -111,12 +117,22 @@ public class ReservaServicioImpl implements ReservaServicio {
 
     @Override
     public ReservaRespuesta obtener(Long id) {
-        return Mapeador.aReserva(buscar(id));
+        Booking reserva = buscar(id);
+        usuarioActual.verificarDueno(reserva.getMember().getId());   // RN-13: MEMBER solo la suya
+        return Mapeador.aReserva(reserva);
     }
 
-    /** RF-05: por miembro, por sala y fecha, o por estado. */
+    /** RF-05: por miembro, por sala y fecha, o por estado. Un MEMBER solo ve las suyas. */
     @Override
     public List<ReservaRespuesta> listar(Long miembroId, Long salaId, LocalDate fecha, BookingStatus estado) {
+        UsuarioAutenticado usuario = usuarioActual.obtener();
+        if (usuario.esMiembro()) {
+            if (miembroId != null && !miembroId.equals(usuario.miembroId())) {
+                throw new AccesoDenegadoException("Solo puede consultar sus propias reservas");
+            }
+            miembroId = usuario.miembroId();
+            salaId = null;
+        }
         List<Booking> reservas;
         if (miembroId != null) {
             reservas = estado == null
@@ -191,6 +207,7 @@ public class ReservaServicioImpl implements ReservaServicio {
     @Transactional
     public CancelacionRespuesta cancelar(Long id) {
         Booking reserva = buscar(id);
+        usuarioActual.verificarDueno(reserva.getMember().getId());   // RN-13
         if (!ACTIVAS.contains(reserva.getStatus())) {
             throw new ReglaNegocioException("RN-09", "Solo se puede cancelar una reserva PENDING o CONFIRMED (estado actual: "
                     + reserva.getStatus() + ")");
@@ -207,8 +224,15 @@ public class ReservaServicioImpl implements ReservaServicio {
 
     // ------------------------------------------------------------------ auxiliares
 
-    /** En la fase 08 se agrega: un MEMBER solo reserva a su nombre. */
+    /** ADMIN y RECEPTIONIST reservan a nombre de cualquier miembro; un MEMBER solo a su nombre. */
     private Long resolverMiembro(Long miembroId) {
+        UsuarioAutenticado usuario = usuarioActual.obtener();
+        if (usuario.esMiembro()) {
+            if (miembroId != null && !miembroId.equals(usuario.miembroId())) {
+                throw new AccesoDenegadoException("Un miembro solo puede reservar a su nombre");
+            }
+            return usuario.miembroId();
+        }
         if (miembroId == null) {
             throw new DatosInvalidosException("miembroId es obligatorio");
         }
@@ -277,6 +301,7 @@ public class ReservaServicioImpl implements ReservaServicio {
 
     private Booking buscarParaCambiarServicios(Long id) {
         Booking reserva = buscar(id);
+        usuarioActual.verificarDueno(reserva.getMember().getId());   // RN-13
         if (reserva.getStatus() != BookingStatus.PENDING) {
             throw new ReglaNegocioException("RN-10", "Los servicios solo se pueden cambiar mientras la reserva está PENDING");
         }
