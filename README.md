@@ -32,6 +32,35 @@ Trabajo individual: Heiling (GitHub: heiling-18).
 - No hace falta instalar Maven: el proyecto trae `mvnw` / `mvnw.cmd`.
 - Opcional: **Postman** e **MySQL Workbench**.
 
+## Inicio rápido en otro computador
+
+Con **Git**, **JDK 21** y **Docker Desktop abierto**, en PowerShell:
+
+```powershell
+# 1. Comprobar requisitos
+java -version            # debe decir 21 o superior
+docker --version         # Docker Desktop debe estar abierto ("Engine running")
+
+# 2. Descargar el proyecto
+git clone https://github.com/heiling-18/coworkhub.git
+cd coworkhub
+
+# 3. Levantar MySQL en Docker (puerto 3307 del PC)
+docker compose up -d
+docker ps                # esperar a que STATUS diga (healthy)
+
+# 4. Arrancar la aplicación (la primera vez descarga dependencias: 2-5 min)
+.\mvnw.cmd spring-boot:run
+```
+
+Cuando aparezca `Started CoworkhubApplication`, abrir:
+
+- Frontend: http://localhost:8080/ (usuarios `admin`, `recepcion`, `ana`, `luis`; contraseña `clave123`)
+- Swagger: http://localhost:8080/doc/swagger-ui.html
+
+No hay que configurar variables de entorno: todas tienen un valor por defecto (ver más abajo).
+Si un puerto está ocupado o algo falla, vaya a [Solución de problemas](#solución-de-problemas).
+
 ## Instalación
 
 ```bash
@@ -134,6 +163,56 @@ Si algo raro pasa después de cambiar código, limpie lo compilado: `.\mvnw.cmd 
 El frontend está en `src/main/resources/static/` y lo sirve el mismo Spring Boot, así que no necesita otro
 servidor: con el backend corriendo, abra **http://localhost:8080/**.
 
+## Solución de problemas
+
+### El puerto de MySQL (3307) está ocupado
+
+Síntoma al hacer `docker compose up -d`: `ports are not available: ... 0.0.0.0:3307`.
+
+1. Ver qué programa lo usa (opcional):
+   ```powershell
+   netstat -ano | findstr :3307
+   ```
+2. Usar otro puerto, por ejemplo 3308. En `docker-compose.yml` cambie la línea de `ports`:
+   ```yaml
+   ports:
+     - "3308:3306"
+   ```
+3. Recree el contenedor y diga a la app el nuevo puerto **en la misma terminal** donde la va a arrancar:
+   ```powershell
+   docker compose up -d
+   $env:DB_URL = "jdbc:mysql://localhost:3308/coworkhub?serverTimezone=America/Bogota"
+   .\mvnw.cmd spring-boot:run
+   ```
+
+### El puerto de la app (8080) está ocupado
+
+Síntoma al arrancar: `Web server failed to start. Port 8080 was already in use.`
+
+```powershell
+netstat -ano | findstr :8080          # ver el PID del programa que lo usa (opcional)
+$env:SERVER_PORT = "8081"             # arrancar la app en otro puerto
+.\mvnw.cmd spring-boot:run
+```
+
+Y abra http://localhost:8081/ (y Swagger en http://localhost:8081/doc/swagger-ui.html).
+Si el 8080 lo ocupa una ejecución anterior de esta misma app, basta con cerrarla (`Ctrl+C` en su terminal)
+o terminar el proceso con `taskkill /PID <pid> /F`.
+
+### Otros errores frecuentes
+
+| Mensaje | Causa | Solución |
+|---|---|---|
+| `failed to connect to the docker API` | Docker Desktop está cerrado | Abrirlo y esperar *Engine running* |
+| `Communications link failure` | La app arrancó antes que MySQL | `docker ps`, esperar `(healthy)` y arrancar de nuevo |
+| `container name "/coworkhub-mysql" is already in use` | Quedó un contenedor anterior | `docker rm -f coworkhub-mysql` y `docker compose up -d` |
+| `release version 21 not supported` | Java anterior a 21 | Instalar JDK 21 y abrir una terminal nueva |
+| `mvnw.cmd` no se reconoce | En PowerShell falta `.\` | `.\mvnw.cmd spring-boot:run` |
+| Comportamiento raro tras cambiar código | Clases viejas compiladas | `.\mvnw.cmd clean spring-boot:run` |
+| Falla el escenario 6 de Postman | Pasaron varias horas desde el arranque | Reiniciar la app (recarga `import.sql`) |
+
+Para detener todo: `Ctrl+C` en la terminal de la app y `docker compose stop`.
+
 ## Usuarios de prueba
 
 La contraseña de todos es **`clave123`** (en la base se guarda con BCrypt).
@@ -157,6 +236,135 @@ Marta, Jorge (suspendido) y Sofía son miembros **sin cuenta**: el ADMIN o la re
 
 Los roles se aplican con `@PreAuthorize` en los controladores. La regla de "dueño" (un MEMBER solo accede a lo
 suyo) se valida en la capa de negocio y responde `403`.
+
+## Diagramas
+
+### Arquitectura
+
+```mermaid
+flowchart TB
+    U["Navegador (frontend HTML/CSS/JS)<br/>Postman · Swagger · curl"]
+    subgraph APP["Spring Boot (puerto 8080)"]
+        F["JwtFiltro<br/>valida el token: 401 si falta o no sirve"]
+        C["Controladores (presentation)<br/>@PreAuthorize por rol: 403 · @Valid: 400"]
+        S["Servicios (business)<br/>reglas RN-01..RN-13 · @Transactional<br/>dueño del recurso: 403"]
+        R["Repositorios (persistence)<br/>Spring Data JPA"]
+        A["ManejadorErrores (@RestControllerAdvice)<br/>{error, codigo, timestamp}"]
+    end
+    DB[("MySQL 8 en Docker<br/>puerto 3307")]
+    U -- "HTTP + Authorization: Bearer token" --> F --> C --> S --> R --> DB
+    C -. excepción .-> A
+    S -. excepción .-> A
+```
+
+### Modelo de datos
+
+```mermaid
+erDiagram
+    LOCATION ||--o{ ROOM : tiene
+    ROOM }o--o{ EQUIPMENT : "room_equipment"
+    MEMBERSHIP_PLAN ||--o{ MEMBER : incluye
+    MEMBER |o--o| USER_ACCOUNT : "cuenta de login"
+    MEMBER ||--o{ BOOKING : hace
+    ROOM ||--o{ BOOKING : recibe
+    BOOKING ||--o{ BOOKING_ITEM : contiene
+    ADDITIONAL_SERVICE ||--o{ BOOKING_ITEM : "se pide en"
+
+    LOCATION { bigint id PK
+        string name
+        string city
+        string address
+        time opening_time
+        time closing_time }
+    ROOM { bigint id PK
+        string name
+        string type "MEETING_ROOM, PRIVATE_OFFICE, DESK"
+        int capacity
+        decimal hourly_rate
+        boolean active
+        bigint location_id FK }
+    EQUIPMENT { bigint id PK
+        string name UK }
+    MEMBERSHIP_PLAN { bigint id PK
+        string name UK
+        int included_hours_per_month
+        decimal overage_discount
+        int max_active_bookings }
+    MEMBER { bigint id PK
+        string document_number UK
+        string full_name
+        string email UK
+        string status "ACTIVE, SUSPENDED"
+        bigint plan_id FK }
+    USER_ACCOUNT { bigint id PK
+        string username UK
+        string password "hash BCrypt"
+        string role "ADMIN, RECEPTIONIST, MEMBER"
+        bigint member_id FK "UNIQUE, null en ADMIN y RECEPTIONIST" }
+    BOOKING { bigint id PK
+        datetime start_time
+        datetime end_time
+        int attendees
+        string status
+        decimal room_cost
+        decimal services_cost
+        decimal total_cost
+        decimal cancellation_fee
+        bigint room_id FK
+        bigint member_id FK }
+    ADDITIONAL_SERVICE { bigint id PK
+        string name UK
+        decimal unit_price }
+    BOOKING_ITEM { bigint id PK
+        int quantity
+        decimal applied_unit_price
+        bigint booking_id FK
+        bigint service_id FK }
+```
+
+### Estados de una reserva (RN-09)
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING : crear (RN-01 a RN-07)
+    PENDING --> CONFIRMED : confirmar (ADMIN / RECEPTIONIST)
+    CONFIRMED --> COMPLETED : completar (ADMIN / RECEPTIONIST)
+    PENDING --> CANCELLED : cancelar (RN-08)
+    CONFIRMED --> CANCELLED : cancelar (RN-08)
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    note right of PENDING : solo aquí se pueden cambiar los servicios (RN-10)
+```
+
+### Crear una reserva sin duplicados (RN-01)
+
+```mermaid
+sequenceDiagram
+    participant A as Solicitud A
+    participant B as Solicitud B (misma sala y hora)
+    participant S as ReservaServicioImpl
+    participant DB as MySQL
+    A->>S: POST /api/reservas
+    S->>DB: SELECT sala ... FOR UPDATE (bloquea la sala)
+    B->>S: POST /api/reservas
+    S->>DB: SELECT sala ... FOR UPDATE
+    Note over B,DB: B espera: la sala está bloqueada por A
+    S->>DB: ¿hay cruce? no → INSERT reserva
+    S-->>A: 201 Created
+    Note over DB: A confirma la transacción y libera el bloqueo
+    S->>DB: ¿hay cruce? (READ_COMMITTED: ve la reserva de A)
+    S-->>B: 409 RN-01 "La sala ya está reservada en ese horario"
+```
+
+### Cancelación (RN-08)
+
+```mermaid
+flowchart LR
+    X["Cancelar reserva<br/>PENDING o CONFIRMED"] --> Q{"¿Cuánto falta<br/>para el inicio?"}
+    Q -- "24 h o más" --> N["Sin cargo<br/>se devuelven las horas"]
+    Q -- "entre 2 h y 24 h" --> M["Cargo: 50 % del<br/>costo de la sala"]
+    Q -- "menos de 2 h<br/>o ya inició" --> E["409 RN-08<br/>no se puede cancelar"]
+```
 
 ## Cómo usar la API
 
