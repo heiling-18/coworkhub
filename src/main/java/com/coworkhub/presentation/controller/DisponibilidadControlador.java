@@ -1,5 +1,8 @@
 package com.coworkhub.presentation.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import com.coworkhub.business.service.DisponibilidadServicio;
 import com.coworkhub.presentation.dto.response.SalaRespuesta;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 @RestController
+@Tag(name = "Disponibilidad", description = "Salas libres de una sede en una fecha y rango horario (RF-03).")
 @RequestMapping("/api/disponibilidad")
 @RequiredArgsConstructor
 public class DisponibilidadControlador {
@@ -20,6 +24,7 @@ public class DisponibilidadControlador {
 
     /** RF-03: GET /api/disponibilidad?sedeId=1&fecha=2030-06-03&horaInicio=10:00&horaFin=12:00 */
     @GetMapping
+    @Operation(summary = "Salas libres (filtros opcionales: capacidadMinima y equipamientoIds)")
     public List<SalaRespuesta> salasLibres(
             @RequestParam Long sedeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
