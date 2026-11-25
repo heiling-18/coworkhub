@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CoWorkHub · Iniciar sesión</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="login-fondo">
+  <section class="login-tarjeta">
+    <div class="login-marca">
+      <div class="logo">CH</div>
+      <h1>CoWorkHub</h1>
+    </div>
+    <p style="color: var(--texto-suave); margin: 0">Reservas de salas para tu red de coworking.</p>
+
+    <form id="form-login" novalidate>
+      <div>
+        <label for="usuario">Usuario</label>
+        <input id="usuario" name="usuario" autocomplete="username" required autofocus>
+      </div>
+      <div>
+        <label for="contrasena">Contraseña</label>
+        <input id="contrasena" name="contrasena" type="password" autocomplete="current-password" required>
+      </div>
+      <p id="error" class="mensaje-error" hidden></p>
+      <button class="btn" type="submit">Ingresar</button>
+    </form>
+
+    <div class="demo">
+      Usuarios de prueba (contraseña <strong>clave123</strong>):
+      <div class="chips">
+        <button class="chip" type="button" data-usuario="admin">admin · Administrador</button>
+        <button class="chip" type="button" data-usuario="recepcion">recepcion · Recepción</button>
+        <button class="chip" type="button" data-usuario="ana">ana · Miembro</button>
+        <button class="chip" type="button" data-usuario="luis">luis · Miembro</button>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="js/login.js"></script>
+</body>
+</html>

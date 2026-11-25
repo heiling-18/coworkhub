@@ -228,4 +228,18 @@ scripts/                     prueba de concurrencia
 
 ## Evidencias de funcionamiento
 
-Las capturas están en [`docs/evidencias/`](docs/evidencias/).
+Capturas del frontend y de Swagger funcionando contra MySQL (carpeta [`docs/evidencias/`](docs/evidencias/)).
+
+| | |
+|---|---|
+| **Login** con usuarios de prueba<br>![Login](docs/evidencias/01-login.jpg) | **Inicio de un MEMBER**: consumo del mes y próximas reservas<br>![Inicio miembro](docs/evidencias/02-inicio-miembro.jpg) |
+| **Inicio del ADMIN**: resumen de reservas, salas y miembros<br>![Inicio admin](docs/evidencias/03-inicio-admin.jpg) | **Disponibilidad** (RF-03): salas libres por sede, fecha y horario<br>![Disponibilidad](docs/evidencias/04-disponibilidad.jpg) |
+| **Nueva reserva** con servicios adicionales (RF-04)<br>![Nueva reserva](docs/evidencias/05-nueva-reserva.jpg) | **Reservas**: confirmar, completar y cancelar según el estado (RN-09)<br>![Reservas](docs/evidencias/06-reservas.jpg) |
+| **Cancelación con 5 h**: cargo del 50 % (RN-08)<br>![Cancelación](docs/evidencias/07-cancelacion-cargo-50.jpg) | **Miembros**: registrar, editar, suspender, activar, consumo<br>![Miembros](docs/evidencias/08-miembros.jpg) |
+| **Error de negocio** con su código: no se elimina un miembro con reservas (RN-12)<br>![Error RN-12](docs/evidencias/09-error-rn12.jpg) | **Catálogos como ADMIN**: crear, editar y eliminar<br>![Catálogos admin](docs/evidencias/10-catalogos-admin.jpg) |
+| **Catálogos como RECEPTIONIST**: solo consulta (RN-13)<br>![Catálogos consulta](docs/evidencias/11-catalogos-solo-consulta.jpg) | **Swagger UI** con grupos y botón Authorize<br>![Swagger](docs/evidencias/12-swagger.jpg) |
+
+Pruebas automáticas ejecutadas:
+
+- Los **14 escenarios** de la colección de Postman responden el código esperado.
+- `scripts/prueba-concurrencia.ps1`: `Respuestas: 201, 409, 409, 409, 409, 409` → solo una reserva creada (RN-01).
